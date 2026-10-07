@@ -1,0 +1,40 @@
+{
+  "scenes": [
+    {
+      "name": "tiago_pp_simple_table",
+      "asset": "third_party/scenes/furniture_sim/simpleTable.xml",
+      "task": "bimanual reach, tabletop placement, dual-arm transport",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "tiago_pp_hinged_cabinet",
+      "asset": "third_party/scenes/furniture_sim/hingecabinet.xml",
+      "task": "door opening, handle reach, constrained manipulation",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "tiago_pp_slide_cabinet",
+      "asset": "third_party/scenes/furniture_sim/slidecabinet.xml",
+      "task": "drawer opening and mobile-base approach",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "tiago_pp_kitchen_appliances",
+      "asset": "third_party/scenes/furniture_sim/oven.xml + microwave.xml",
+      "task": "kitchen loco-manipulation and bimanual access",
+      "license": "Apache-2.0"
+    }
+  ],
+  "external_candidates": [
+    {
+      "name": "mjlab_manipulation",
+      "source": "https://github.com/omarrayyann/mjlab_manipulation",
+      "status": "reference-only until license and asset provenance are audited"
+    },
+    {
+      "name": "EBiM MuJoCo tasks",
+      "source": "https://github.com/EBiM-Benchmark/benchmark/tree/main/task1_mujoco",
+      "status": "reference-only; external benchmark/client and larger dependency surface"
+    }
+  ]
+}

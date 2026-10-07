@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "postman-rl-wbc"
+version = "0.1.0"
+description = "Manager-based MuJoCo framework for RL and whole-body control of wheeled mobile manipulators."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "POSTMAN contributors" }]
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+sim = ["mujoco~=3.11.0", "mujoco-menagerie==2026.9.0", "mjlab==1.6.0"]
+control = ["pin>=2.6", "osqp>=1.0", "scipy>=1.10"]
+rl = ["torch>=2.14", "rsl-rl-lib==5.4.2"]
+data = ["h5py>=3.8", "pyyaml>=6.0"]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+all = [
+  "mujoco~=3.11.0", "mujoco-menagerie==2026.9.0", "mjlab==1.6.0", "pin>=2.6", "osqp>=1.0",
+  "scipy>=1.15", "torch>=2.14", "rsl-rl-lib==5.4.2", "h5py>=3.8",
+  "pyyaml>=6.0", "pytest>=8", "ruff>=0.6", "mypy>=1.10",
+]
+
+[project.scripts]
+postman-train = "postman.scripts.train:main"
+postman-play = "postman.scripts.play:main"
+postman-export = "postman.scripts.export:main"
+postman-validate = "postman.scripts.validate:main"
+postman-mujoco-smoke = "postman.scripts.mujoco_smoke:main"
+
+[project.entry-points."mjlab.tasks"]
+postman = "postman.mjlab_tasks"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

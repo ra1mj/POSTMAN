@@ -1,0 +1,12 @@
+task: tiago_pp_bimanual_reach
+robot: tiago_pp
+control_frequency_hz: 100
+physics_frequency_hz: 500
+wbc:
+  backend: kinematic_qp
+  max_delta_q: 0.25
+  regularization: 0.0001
+rl:
+  algorithm: ppo
+  privileged_teacher: true
+  student_distillation: true
