@@ -174,7 +174,8 @@ notes are in [`docs/mjlab_integration.md`](docs/mjlab_integration.md).
 src/postman/representations/   UMMR-1.0 state/action/command types
 src/postman/wbc/               QP WBC, impedance control, task builders
 src/postman/envs/              CPU manager env, registry, vectorized runner
-src/postman/mjlab_tasks/       native mjlab task registration
+src/postman/asset_zoo/robots/  Unitree-style robot constants/entity configs
+src/postman/tasks/             Unitree-style env_cfgs/rl_cfg/task registration
 src/postman/robots/             TIAGo++ metadata and asset resolution
 src/postman/sim/                MuJoCo adapter, scene composer, mjlab bridge
 src/postman/rl/                 smoke policy, RSL-RL adapter, distillation

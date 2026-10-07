@@ -34,7 +34,7 @@ postman-validate = "postman.scripts.validate:main"
 postman-mujoco-smoke = "postman.scripts.mujoco_smoke:main"
 
 [project.entry-points."mjlab.tasks"]
-postman = "postman.mjlab_tasks"
+postman = "postman.tasks"
 
 [tool.setuptools.packages.find]
 where = ["src"]

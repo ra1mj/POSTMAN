@@ -1,0 +1,1 @@
+"""POSTMAN robot assets."""
