@@ -1,5 +1,5 @@
 runner:
-  num_steps_per_env: 24
+  num_steps_per_env: 48
   obs_groups:
     actor: [policy]
     critic: [policy, privileged]

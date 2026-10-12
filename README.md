@@ -103,16 +103,23 @@ train Postman-TiagoPP-ArmReach \
   --gpu-ids '[]' \
   --env.scene.num-envs 1 \
   --agent.max-iterations 1 \
-  --agent.num-steps-per-env 24 \
+  --agent.num-steps-per-env 48 \
   --agent.logger tensorboard \
   --agent.upload-model False \
   --log-root /tmp/postman_mjlab_train
 ```
 
-On Linux/NVIDIA, omit `--gpu-ids '[]'` or select the desired GPU. The current
-native task is the baseline scene/action integration. The custom WBC action
-term remains the next control-layer integration point; the standalone
-`KinematicQpWbc` is already tested through the CPU reference path.
+On Linux/NVIDIA, omit `--gpu-ids '[]'` or select the desired GPU. The native task
+uses a single 25-dimensional RL-WBC action: four wheel velocity targets followed
+by 21 torso/head/arm/gripper position targets. The policy observes proprioception,
+synthetic UMMR waypoint commands, and the previous actuator action. The command
+generator and action term run at 100 Hz (`0.005 s` physics timestep with
+`decimation=2`), with mass, friction, damping, actuator-gain and action-delay
+randomization on reset. Native actions are clipped, rate-limited and smoothed;
+invalid policy output uses a conservative base/lift/hold reference. The full
+MuJoCo/Jacobian `TiagoTaskSpaceWbc` drives the interactive demo separately;
+it is not yet the native PPO teacher. A PPO smoke run verifies the training
+plumbing, not a trained manipulation policy.
 
 ## Open the visualization
 
@@ -132,8 +139,27 @@ Open [http://localhost:8080](http://localhost:8080). Stop the process with
 `Ctrl-C`.
 
 The scene contains the TIAGo++ model, a ground plane, and a table. The native
-task exposes 21 arm/torso/head position actions and four wheel velocity
-actions, so it is ready for the next mobile-base policy experiment.
+task exposes task-space command trajectories and a unified RL-WBC actuator action,
+so mobile-base and bimanual coordination are trained together.
+
+## Drag a hand and watch the whole body follow
+
+The reference demo renders the complete TIAGo++ model in the browser and adds
+draggable XYZ targets at both hands. The base, torso and arms are solved together
+from the target command:
+
+```bash
+python scripts/hand_follow_demo.py
+```
+
+Open the printed local URL, drag either target, and use the **Active hand** and
+**Pause simulation** controls to inspect the response. This demo uses the
+task-space QP reference controller so the interaction is available before a
+trained RL checkpoint exists.
+
+The demo uses normal gravity and a floor at the wheel-contact height, with
+continuous position setpoints and gravity compensation through the position
+servos. See [demo instructions and response checks](docs/demo_hand_follow.md).
 
 ## Compose furniture scenes
 
@@ -156,15 +182,17 @@ and avoids broken nested XML relative paths.
 
 ## Control architecture
 
-The control path is:
+The native control path is:
 
 ```text
-task/reference → RL policy → UMMR residual → WBC/QP → impedance/actuator commands
+synthetic UMMR trajectory → RL-WBC policy → safety filter → 21 joint targets + 4 wheel velocities
 ```
 
-The public control types are in
+The CPU reference path retains the residual/QP pipeline for fast regression
+tests. The public task-space types are in
 [`src/postman/representations/ummr.py`](src/postman/representations/ummr.py).
-The QP WBC and Pinocchio task seam are in
+The trajectory utilities are in `src/postman/representations/trajectory.py`.
+The task-space QP WBC and Pinocchio task seam are in
 [`src/postman/wbc`](src/postman/wbc). The mjlab manager and RSL-RL integration
 notes are in [`docs/mjlab_integration.md`](docs/mjlab_integration.md).
 
@@ -187,12 +215,13 @@ tests/                          unit, scene, vectorization, and WBC tests
 
 The current checkout has been validated with:
 
-- `pytest`: 9 tests passed
+- `pytest`: 40 tests passed
 - `ruff check`: clean
 - MuJoCo TIAGo++ smoke: 500 stable steps, `nq=32`, `nv=31`, `nu=25`
 - TIAGo++ + SimpleTable + HingeCabinet composition: compiled and stepped
-- mjlab/RSL-RL CPU PPO: one 24-step training iteration completed
-- Viser visualization: TIAGo++ with table background at `localhost:8080`
+- mjlab/RSL-RL CPU PPO: one iteration smoke completed (no converged RL policy)
+- Hand demo: 5-second gravity/contact hold, bilateral physical target tracking
+- Left hand +12 cm forward/+8 cm up: 1-second error 1.10 cm at approximately 100 Hz
 
 See [`licenses/dependency-audit.md`](licenses/dependency-audit.md) for the
 tested environment and license policy.

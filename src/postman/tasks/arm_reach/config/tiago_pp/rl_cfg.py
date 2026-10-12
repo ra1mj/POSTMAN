@@ -36,6 +36,9 @@ def tiago_pp_ppo_runner_cfg() -> RslRlOnPolicyRunnerCfg:
         ),
         experiment_name="postman_tiago_pp",
         save_interval=100,
-        num_steps_per_env=24,
+        # 48 policy steps at 100 Hz gives the controller enough horizon to
+        # observe the two-waypoint command trajectory without changing its
+        # fixed 25-dimensional actuator action interface.
+        num_steps_per_env=48,
         max_iterations=30_000,
     )

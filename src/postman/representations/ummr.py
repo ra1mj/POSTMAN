@@ -15,6 +15,8 @@ def _vector(value: Any, size: int, name: str) -> np.ndarray:
     array = np.asarray(value, dtype=np.float64).reshape(-1)
     if array.size != size:
         raise ValueError(f"{name} must contain {size} values, got {array.size}")
+    if not np.all(np.isfinite(array)):
+        raise ValueError(f"{name} must contain only finite values")
     return array.copy()
 
 
@@ -57,6 +59,17 @@ class WholeBodyCommand:
         self.left_elbow = _vector(self.left_elbow, 3, "left_elbow")
         self.right_elbow = _vector(self.right_elbow, 3, "right_elbow")
         self.grippers = _vector(self.grippers, 2, "grippers")
+        if not isinstance(self.left_wrist, AxisAnglePose) or not isinstance(
+            self.right_wrist, AxisAnglePose
+        ):
+            raise TypeError("wrist targets must be AxisAnglePose values")
+        for value in self.weights.values():
+            try:
+                scalar = float(value)
+            except (TypeError, ValueError) as exc:
+                raise ValueError("command weights must be scalar numbers") from exc
+            if not np.isfinite(scalar) or scalar < 0:
+                raise ValueError("command weights must be finite and non-negative")
 
     @property
     def dim(self) -> int:
@@ -104,10 +117,12 @@ class WholeBodyAction:
 
     def __post_init__(self) -> None:
         self.residual = _vector(self.residual, 24, "residual")
-        if self.scale <= 0:
-            raise ValueError("scale must be positive")
+        if not np.isfinite(self.scale) or self.scale <= 0:
+            raise ValueError("scale must be finite and positive")
 
     def clipped(self, limit: float = 1.0) -> WholeBodyAction:
+        if not np.isfinite(limit) or limit <= 0:
+            raise ValueError("limit must be finite and positive")
         return WholeBodyAction(np.clip(self.residual, -limit, limit), self.scale)
 
     def apply(self, command: WholeBodyCommand) -> WholeBodyCommand:
@@ -132,12 +147,18 @@ class RobotState:
         self.qd = np.asarray(self.qd, dtype=np.float64).reshape(-1).copy()
         if self.q.shape != self.qd.shape:
             raise ValueError("q and qd must have the same shape")
+        if not np.all(np.isfinite(self.q)) or not np.all(np.isfinite(self.qd)):
+            raise ValueError("q and qd must contain only finite values")
         self.base_pose = _vector(self.base_pose, 7, "base_pose")
         self.base_twist = _vector(self.base_twist, 6, "base_twist")
         if self.raw_qpos is not None:
             self.raw_qpos = np.asarray(self.raw_qpos, dtype=np.float64).reshape(-1).copy()
         if self.raw_qvel is not None:
             self.raw_qvel = np.asarray(self.raw_qvel, dtype=np.float64).reshape(-1).copy()
+        for name in ("raw_qpos", "raw_qvel"):
+            value = getattr(self, name)
+            if value is not None and not np.all(np.isfinite(value)):
+                raise ValueError(f"{name} must contain only finite values")
 
 
 @dataclass
@@ -152,6 +173,7 @@ class WbcResult:
     solver_status: str = "unknown"
     constraint_violation: float = 0.0
     diagnostics: dict[str, Any] = field(default_factory=dict)
+    actuator_targets: np.ndarray | None = None
 
     def __post_init__(self) -> None:
         self.q_des = np.asarray(self.q_des, dtype=np.float64).reshape(-1)
@@ -159,5 +181,23 @@ class WbcResult:
         self.tau_ff = np.asarray(self.tau_ff, dtype=np.float64).reshape(-1)
         self.tau_cmd = np.asarray(self.tau_cmd, dtype=np.float64).reshape(-1)
         self.base_cmd = np.asarray(self.base_cmd, dtype=np.float64).reshape(-1)
-        if self.constraint_violation < 0:
-            raise ValueError("constraint_violation cannot be negative")
+        if self.base_cmd.size != 3:
+            raise ValueError("base_cmd must contain three local SE(2) values")
+        if any(
+            value.shape != self.q_des.shape
+            for value in (self.qd_des, self.tau_ff, self.tau_cmd)
+        ):
+            raise ValueError("joint controller outputs must have matching shapes")
+        if any(
+            not np.all(np.isfinite(value))
+            for value in (self.q_des, self.qd_des, self.tau_ff, self.tau_cmd, self.base_cmd)
+        ):
+            raise ValueError("controller outputs must contain only finite values")
+        if not np.isfinite(self.constraint_violation) or self.constraint_violation < 0:
+            raise ValueError("constraint_violation must be finite and non-negative")
+        if self.actuator_targets is not None:
+            self.actuator_targets = np.asarray(
+                self.actuator_targets, dtype=np.float64
+            ).reshape(-1).copy()
+            if not np.all(np.isfinite(self.actuator_targets)):
+                raise ValueError("actuator_targets must contain only finite values")

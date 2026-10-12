@@ -10,6 +10,7 @@ import numpy as np
 from postman.representations import RobotState, WbcResult, WholeBodyCommand
 
 from .base import ImpedanceConfig, LinearTask, impedance_torque
+from .batched import mixed_actuator_targets
 
 
 @dataclass(frozen=True)
@@ -27,9 +28,9 @@ class KinematicQpWbcConfig:
 class KinematicQpWbc:
     """Solve a stack of linearized task objectives under per-joint step limits.
 
-    The default task is deliberately identity-mapped so the backend is usable
-    without a robot-specific kinematics dependency. Robot adapters should pass
-    Cartesian ``LinearTask`` objects built from Pinocchio Jacobians.
+    Robot adapters must provide explicit task Jacobians. A task-space command
+    cannot be interpreted as a joint vector; missing kinematics produces a
+    documented hold rather than an implicit identity mapping.
     """
 
     def __init__(self, config: KinematicQpWbcConfig):
@@ -41,12 +42,10 @@ class KinematicQpWbc:
     def reset(self) -> None:
         self.last_status = "reset"
 
-    def _default_tasks(self, state: RobotState, command: WholeBodyCommand) -> list[LinearTask]:
-        target = command.as_vector()
-        rows = min(target.size, self.config.dof)
-        jacobian = np.zeros((rows, self.config.dof), dtype=np.float64)
-        jacobian[:, :rows] = np.eye(rows)
-        return [LinearTask("ummr_residual_fallback", jacobian, target[:rows], 1.0)]
+    def _actuator_targets(self, q: np.ndarray, qd: np.ndarray) -> np.ndarray | None:
+        if q.size != 25:
+            return None
+        return np.asarray(mixed_actuator_targets(q, qd, self.config.dt), dtype=np.float64)
 
     def _solve(
         self,
@@ -93,9 +92,19 @@ class KinematicQpWbc:
     ) -> WbcResult:
         if state.q.size != self.config.dof:
             raise ValueError(f"expected state dof {self.config.dof}, got {state.q.size}")
-        active_tasks = list(tasks) if tasks is not None else self._default_tasks(state, command)
+        active_tasks = list(tasks) if tasks is not None else []
         if not active_tasks:
-            raise ValueError("at least one WBC task is required")
+            self.last_status = "hold_missing_tasks"
+            return WbcResult(
+                q_des=state.q.copy(),
+                qd_des=np.zeros_like(state.q),
+                tau_ff=np.zeros_like(state.q),
+                tau_cmd=np.zeros_like(state.q),
+                base_cmd=np.zeros(3),
+                solver_status=self.last_status,
+                diagnostics={"reason": "explicit robot task Jacobians are required"},
+                actuator_targets=self._actuator_targets(state.q, np.zeros_like(state.q)),
+            )
         hessian = self.config.regularization * np.eye(self.config.dof)
         gradient = np.zeros(self.config.dof)
         for task in active_tasks:
@@ -119,6 +128,7 @@ class KinematicQpWbc:
                 base_cmd=command.base_twist,
                 solver_status="infeasible_bounds",
                 constraint_violation=float(np.maximum(step_lower - step_upper, 0).max()),
+                actuator_targets=self._actuator_targets(state.q, np.zeros_like(state.q)),
             )
         delta_q, status = self._solve(hessian, gradient, step_lower, step_upper)
         q_des = state.q + delta_q
@@ -134,6 +144,7 @@ class KinematicQpWbc:
                 np.maximum(np.abs(delta_q) - self.config.max_delta_q, 0).max()
             ),
             diagnostics={"task_names": [task.name for task in active_tasks]},
+            actuator_targets=self._actuator_targets(state.q, qd_des),
         )
         provisional.tau_cmd = impedance_torque(state, provisional, self.config.impedance)
         self.last_status = status
