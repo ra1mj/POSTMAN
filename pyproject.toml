@@ -15,13 +15,17 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-sim = ["mujoco~=3.11.0", "mujoco-menagerie==2026.9.0", "mjlab==1.6.0"]
+# mjviser 0.0.17 installs mujoco-core 4 into the same module as MuJoCo 3.
+sim = ["mujoco~=3.11.0", "mujoco-menagerie==2026.9.0", "mjlab==1.6.0", "mjviser<0.0.17"]
 control = ["pin>=2.6", "osqp>=1.0", "scipy>=1.10"]
 rl = ["torch>=2.14", "rsl-rl-lib==5.4.2"]
 data = ["h5py>=3.8", "pyyaml>=6.0"]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+luna = ["mujoco>=3.8.1,<4"]
+luna-train = ["mujoco>=3.8.1,<4", "rsl-rl-lib>=5.0.1,<6", "tensorboard>=2.14"]
 all = [
-  "mujoco~=3.11.0", "mujoco-menagerie==2026.9.0", "mjlab==1.6.0", "pin>=2.6", "osqp>=1.0",
+  "mujoco~=3.11.0", "mujoco-menagerie==2026.9.0", "mjlab==1.6.0", "mjviser<0.0.17",
+  "pin>=2.6", "osqp>=1.0",
   "scipy>=1.15", "torch>=2.14", "rsl-rl-lib==5.4.2", "h5py>=3.8",
   "pyyaml>=6.0", "pytest>=8", "ruff>=0.6", "mypy>=1.10",
 ]
@@ -32,12 +36,17 @@ postman-play = "postman.scripts.play:main"
 postman-export = "postman.scripts.export:main"
 postman-validate = "postman.scripts.validate:main"
 postman-mujoco-smoke = "postman.scripts.mujoco_smoke:main"
+postman-luna-train = "postman.luna.train:main"
+postman-luna-teleop = "postman.luna.teleop:main"
 
 [project.entry-points."mjlab.tasks"]
 postman = "postman.tasks"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"postman.luna" = ["luna_680_policy.npz"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

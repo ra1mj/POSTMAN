@@ -58,6 +58,12 @@ export POSTMAN_TIAGO_PP_MJCF=/absolute/path/to/scene_position.xml
 The model metadata and provenance are documented in
 [`assets/robots/tiago_pp/README.md`](assets/robots/tiago_pp/README.md).
 
+## Gento Luna V3 680
+
+The Luna adapter includes a trained residual PPO actor, browser teleoperation,
+and native Gento DDS deployment for the six BODY axes, both arms, head and RDK
+chassis. See [Luna 680 training and DDS deployment](docs/luna_680.md).
+
 ## Run the CPU reference path
 
 ```bash
